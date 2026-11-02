@@ -117,7 +117,10 @@ ffs_mount() {
 
 ffs_umount() {
 	mountpoint -q "${FFS_MOUNTPOINT}" || return 0
-	umount "${FFS_MOUNTPOINT}" >/dev/null 2>&1 || true
+	umount "${FFS_MOUNTPOINT}" || {
+		echo "usbdevice: FunctionFS is busy; leaving gadget intact" >&2
+		return 1
+	}
 }
 
 net_prepare() {
@@ -218,6 +221,8 @@ gadget_stop() {
 	adbd_stop || return 1
 	if [ -d "${G}" ]; then
 		echo "" > "${G}/UDC" 2>/dev/null || true
+		# Release the mount before deleting its associated function instance.
+		ffs_umount || return 1
 		rm -f "${G}/os_desc/c.1"
 		rm -f "${G}/configs/c.1/ffs.adb"
 		rm -f "${G}/configs/c.1/${NCM_FUNCTION}"
@@ -228,7 +233,7 @@ gadget_stop() {
 		rmdir "${G}/strings/0x409" 2>/dev/null || true
 		rmdir "${G}" 2>/dev/null || true
 	fi
-	ffs_umount
+	ffs_umount || return 1
 	echo "usbdevice: stopped"
 }
 

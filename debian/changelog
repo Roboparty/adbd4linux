@@ -1,3 +1,10 @@
+adbd (1.0.8-1+usbfix3) unstable; urgency=medium
+
+  * Unmount FunctionFS before deleting its configfs function instance.
+  * Preserve the gadget and report failure when FunctionFS cannot unmount.
+
+ -- Local validation <noreply@localhost>  Mon, 02 Nov 2026 09:15:00 +0000
+
 adbd (1.0.8-1+usbfix2) unstable; urgency=medium
 
   * Local validation build: observe explicit USB worker completion on glibc.
