@@ -1,3 +1,20 @@
+adbd (1.0.8-1+usbfix3) unstable; urgency=medium
+
+  * Unmount FunctionFS before deleting its configfs function instance.
+  * Preserve the gadget and report failure when FunctionFS cannot unmount.
+
+ -- Local validation <noreply@localhost>  Mon, 02 Nov 2026 09:15:00 +0000
+
+adbd (1.0.8-1+usbfix2) unstable; urgency=medium
+
+  * Local validation build: observe explicit USB worker completion on glibc.
+  * Rebind the configured Linux gadget after FunctionFS endpoints reopen,
+    including USB unplug/replug, without restarting adbd or the host server.
+  * Let adbd own descriptor-ready binding and stop it before gadget teardown.
+  * Add reconnect and binding error-path tests to CTest.
+
+ -- Local validation <noreply@localhost>  Fri, 30 Oct 2026 02:30:00 +0000
+
 adbd (1.0.8-1) unstable; urgency=medium
 
   * Disable USB networking by default: set ADBD_GADGET_NET=none explicitly and

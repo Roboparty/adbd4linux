@@ -67,6 +67,13 @@ execute_process(COMMAND "${PATCH_EXECUTABLE}" --batch --fuzz=0 --no-backup-if-mi
 if(NOT patch_result EQUAL 0)
     message(FATAL_ERROR "cmake/linux-port.patch does not apply to the pinned sources")
 endif()
+configure_file(cmake/linux_ffs_binding.h
+               "${PORT_SOURCE}/thirdparty/adb/daemon/linux_ffs_binding.h" COPYONLY)
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(linux_ffs_binding_test tests/linux_ffs_binding_test.cpp cmake/linux_ffs_binding.cpp)
+    add_test(NAME linux_ffs_binding COMMAND linux_ffs_binding_test)
+endif()
 
 set(FMT_INSTALL OFF CACHE BOOL "" FORCE)
 set(FMT_TEST OFF CACHE BOOL "" FORCE)
@@ -75,6 +82,7 @@ add_subdirectory(thirdparty/fmtlib EXCLUDE_FROM_ALL)
 configure_file(cmake/platform_tools_version.h.in platform_tools_version.h @ONLY)
 configure_file(cmake/version.h.in build/version.h @ONLY)
 include(cmake/Targets.cmake)
+target_sources(adbd PRIVATE cmake/linux_ffs_binding.cpp)
 install(TARGETS adbd RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Linux targets do not provide Android's app_process entry point. Install the

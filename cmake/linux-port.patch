@@ -201,13 +201,21 @@ index 0b71b035..954c584b 100644
          child_error_sfd.reset(-1);
          _Exit(1);
 diff --git a/thirdparty/adb/daemon/usb.cpp b/thirdparty/adb/daemon/usb.cpp
-index f4429610..20bc6c0a 100644
 --- a/thirdparty/adb/daemon/usb.cpp
 +++ b/thirdparty/adb/daemon/usb.cpp
-@@ -42,14 +42,19 @@
+@@ -32,6 +32,7 @@
+ 
+ #include <algorithm>
+ #include <array>
++#include <atomic>
+ #include <future>
+ #include <memory>
+ #include <mutex>
+@@ -42,14 +43,22 @@
  
  #include <android-base/logging.h>
  #include <android-base/macros.h>
++#include <android-base/scopeguard.h>
 +#include <android-base/thread_annotations.h>
 +
 +#if defined(__ANDROID__)
@@ -221,11 +229,59 @@ index f4429610..20bc6c0a 100644
  #include "apacket_reader.h"
 +#if defined(__ANDROID__)
  #include "daemon/property_monitor.h"
++#else
++#include "daemon/linux_ffs_binding.h"
 +#endif
  #include "daemon/usb_ffs.h"
  #include "sysdeps/chrono.h"
  #include "transfer_id.h"
-@@ -725,6 +730,7 @@ struct UsbFfsConnection : public Connection {
+@@ -405,6 +414,10 @@
+         CHECK(!worker_started_);
+         worker_started_ = true;
+         worker_thread_ = std::thread([this]() {
++            // Publish completion on normal exit and every early return.
++            auto worker_exit = android::base::make_scope_guard([this]() {
++                worker_finished_.store(true, std::memory_order_release);
++            });
+             adb_thread_setname("UsbFfs-worker");
+             VLOG(USB) << "UsbFfs-worker thread spawned";
+ 
+@@ -438,7 +451,9 @@
+         }
+ 
+         pthread_t worker_thread_handle = worker_thread_.native_handle();
+-        while (true) {
++        // glibc may return success for pthread_kill on an exited, unjoined thread.
++        // Keep interrupting blocked I/O, but observe explicit worker completion.
++        while (!worker_finished_.load(std::memory_order_acquire)) {
+             int rc = pthread_kill(worker_thread_handle, kInterruptionSignal);
+             if (rc != 0) {
+                 LOG(ERROR) << "failed to send interruption signal to worker: " << strerror(rc);
+@@ -446,15 +461,6 @@
+             }
+ 
+             std::this_thread::sleep_for(100ms);
+-
+-            rc = pthread_kill(worker_thread_handle, 0);
+-            if (rc == 0) {
+-                continue;
+-            } else if (rc == ESRCH) {
+-                break;
+-            } else {
+-                LOG(ERROR) << "failed to send interruption signal to worker: " << strerror(rc);
+-            }
+         }
+ 
+         worker_thread_.join();
+@@ -689,6 +695,7 @@
+ 
+     bool worker_started_;
+     std::thread worker_thread_;
++    std::atomic<bool> worker_finished_{false};
+ 
+     std::atomic<bool> stopped_;
+     std::promise<void> destruction_notifier_;
+@@ -725,6 +732,7 @@
  static void usb_ffs_open_thread() {
      adb_thread_setname("usb ffs open");
  
@@ -233,7 +289,7 @@ index f4429610..20bc6c0a 100644
      // When the device is acting as a USB host, we'll be unable to bind to the USB gadget on kernels
      // that don't carry a downstream patch to enable that behavior.
      //
-@@ -738,6 +744,7 @@ static void usb_ffs_open_thread() {
+@@ -738,6 +746,7 @@
          // Return false (i.e. break out of PropertyMonitor::Run) when the property != 1.
          return android::base::ParseBool(value) == android::base::ParseBoolResult::kTrue;
      });
@@ -241,7 +297,7 @@ index f4429610..20bc6c0a 100644
  
      while (true) {
          unique_fd control;
-@@ -748,11 +755,13 @@ static void usb_ffs_open_thread() {
+@@ -748,11 +757,26 @@
              continue;
          }
  
@@ -251,6 +307,19 @@ index f4429610..20bc6c0a 100644
              prop_mon.Run();
              VLOG(USB) << "resuming USB";
          }
++#else
++        // Linux has no Android init property handler to rebind configfs when
++        // FunctionFS closes and reopens its endpoints after a USB disconnect.
++        const int binding = bind_linux_functionfs(getenv("ADBD_GADGET_UDC_PATH"),
++                                                  getenv("ADBD_GADGET_UDC"));
++        if (binding < 0) {
++            PLOG(ERROR) << "failed to bind Linux FunctionFS gadget";
++            std::this_thread::sleep_for(1s);
++            continue;
++        }
++        if (binding > 0) {
++            LOG(INFO) << "bound Linux FunctionFS gadget to " << getenv("ADBD_GADGET_UDC");
++        }
 +#endif
  
          atransport* transport = new atransport(kTransportUsb);
