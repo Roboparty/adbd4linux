@@ -1,3 +1,10 @@
+adbd (1.0.9-1) unstable; urgency=medium
+
+  * Add runtime dependencies for scrcpy-display: xvfb, xfce4-session,
+    dbus and dbus-x11.
+
+ -- RoboParty <2321901849@qq.com>  Tue, 03 Nov 2026 12:40:00 +0800
+
 adbd (1.0.8-1+usbfix3) unstable; urgency=medium
 
   * Unmount FunctionFS before deleting its configfs function instance.
