@@ -150,8 +150,22 @@ Edit `/etc/default/adbd-gadget` and restart `usbdevice.service`.
 | `ADBD_GADGET_MANUFACTURER` | device tree / `Linux Foundation` | USB manufacturer string |
 | `ADBD_GADGET_PRODUCT` | `ADB Interface` | USB product string |
 | `ADBD_GADGET_SERIAL` | device tree / machine-id | USB serial string |
-| `ADBD_GADGET_FFS_UID` | user running `usbdevice` | FunctionFS mount owner |
-| `ADBD_GADGET_FFS_GID` | user running `usbdevice` | FunctionFS mount group |
+| `ADBD_GADGET_FFS_UID` | `ADBD_USER`, else user running `usbdevice` | FunctionFS mount owner |
+| `ADBD_GADGET_FFS_GID` | `ADBD_USER`, else user running `usbdevice` | FunctionFS mount group |
+
+### Run adbd as a normal user
+
+`ADBD_USER` in `/etc/default/adbd-gadget` selects the account adbd, and
+therefore every `adb shell`, runs as. The default `auto` picks the first
+regular account (uid 1000+ with a valid login shell). Set a name to pick one
+explicitly, or leave it empty to keep root. `usbdevice` still sets up the
+gadget as root and gives the user ownership of FunctionFS.
+
+```ini
+ADBD_USER=auto
+```
+
+Restart `usbdevice.service`. `adb root` no longer works in this mode.
 
 ### USB NCM network (disabled by default)
 
@@ -235,9 +249,11 @@ Settings live in `/etc/default/adbd-smb`; the share is restricted to
 | `ADB_TCP_PORT` | Legacy fallback for `ADBD_PORT` |
 | `ADBD_SHELL` | Shell executable; defaults to `bash` when available, otherwise `/bin/sh` |
 | `ADBD_USB=0` | Disable USB discovery for isolated tests |
+| `ADBD_USER` | `auto` | `auto` picks the first regular account; a name pins one; empty keeps root |
 
-Put service environment variables in a `systemd` drop-in as shown above, or
-export them before running `usbdevice` manually.
+`ADBD_USER` goes in `/etc/default/adbd-gadget`. The other variables reach adbd
+through the process environment, so put them in a `systemd` drop-in or export
+them before running `usbdevice` manually.
 
 ## Companion tools
 

@@ -142,8 +142,21 @@ TCP 默认建议只监听回环地址。
 | `ADBD_GADGET_MANUFACTURER` | 设备树 / `Linux Foundation` | USB 厂商字符串 |
 | `ADBD_GADGET_PRODUCT` | `ADB Interface` | USB 产品字符串 |
 | `ADBD_GADGET_SERIAL` | 设备树 / machine-id | USB 序列号 |
-| `ADBD_GADGET_FFS_UID` | 运行 `usbdevice` 的用户 | FunctionFS 挂载属主 |
-| `ADBD_GADGET_FFS_GID` | 运行 `usbdevice` 的用户组 | FunctionFS 挂载属组 |
+| `ADBD_GADGET_FFS_UID` | `ADBD_USER`，否则为运行 `usbdevice` 的用户 | FunctionFS 挂载属主 |
+| `ADBD_GADGET_FFS_GID` | `ADBD_USER`，否则为运行 `usbdevice` 的用户组 | FunctionFS 挂载属组 |
+
+### 以普通用户运行 adbd
+
+`/etc/default/adbd-gadget` 的 `ADBD_USER` 决定 adbd 及所有 `adb shell` 以
+哪个账号运行。默认 `auto` 取第一个普通账号（uid 1000+ 且 shell 可登录）；
+也可以写具体用户名，留空则保持 root。`usbdevice` 仍以 root 配置 gadget，
+并把 FunctionFS 的属主交给该用户。
+
+```ini
+ADBD_USER=auto
+```
+
+重启 `usbdevice.service`。该模式下 `adb root` 不再可用。
 
 ### USB NCM 网络（默认禁用）
 
@@ -229,8 +242,10 @@ loopback。`adbd-smb disable` 会移除共享并停止 `smbd`。
 | `ADB_TCP_PORT` | `ADBD_PORT` 的旧版兼容变量 |
 | `ADBD_SHELL` | shell 路径；优先 `bash`，没有时用 `/bin/sh` |
 | `ADBD_USB=0` | 禁用 USB 探测，供隔离测试使用 |
+| `ADBD_USER` | `auto` | `auto` 取第一个普通账号；写用户名则固定；留空为 root |
 
-服务环境变量建议放在上面的 systemd drop-in 中；手动运行时也可以先 export。
+`ADBD_USER` 放在 `/etc/default/adbd-gadget`。其余变量需要进入 adbd 的进程
+环境，所以放在 systemd drop-in 中，或手动运行 `usbdevice` 前 export。
 
 ## 配套工具
 

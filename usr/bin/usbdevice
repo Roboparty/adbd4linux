@@ -23,6 +23,34 @@ if [ -r "${DEFAULTS}" ]; then
 	. "${DEFAULTS}"
 fi
 
+# Run adbd as a normal user when ADBD_USER is set. Gadget setup stays root.
+# ADBD_USER=auto picks the first regular account (uid 1000+, valid login shell).
+ADBD_USER="${ADBD_USER:-}"
+if [ "${ADBD_USER}" = "auto" ]; then
+	ADBD_USER=$(getent passwd | \
+		awk -F: '$3 >= 1000 && $3 < 60000 && $7 !~ /(nologin|false)$/ {print $3 ":" $1}' | \
+		sort -n | head -n 1 | cut -d: -f2)
+fi
+ADBD_UID=""
+ADBD_GID=""
+ADBD_HOME="${HOME:-/root}"
+if [ -n "${ADBD_USER}" ]; then
+	if ! command -v setpriv >/dev/null 2>&1; then
+		echo "usbdevice: ADBD_USER requires setpriv (util-linux)" >&2
+		exit 1
+	fi
+	if ! ADBD_UID=$(id -u "${ADBD_USER}" 2>/dev/null); then
+		echo "usbdevice: unknown ADBD_USER=${ADBD_USER}" >&2
+		exit 1
+	fi
+	ADBD_GID=$(id -g "${ADBD_USER}")
+	ADBD_HOME=$(getent passwd "${ADBD_USER}" | cut -d: -f6)
+	[ -n "${ADBD_HOME}" ] || ADBD_HOME=/
+	# adbd must own FunctionFS even though the gadget is set up as root.
+	: "${ADBD_GADGET_FFS_UID:=${ADBD_UID}}"
+	: "${ADBD_GADGET_FFS_GID:=${ADBD_GID}}"
+fi
+
 GADGET_NAME="${ADBD_GADGET_NAME:-adbd}"
 G="${GADGET_DIR}/${GADGET_NAME}"
 NCM_FUNCTION="${ADBD_GADGET_NCM_FUNCTION:-ncm.usb0}"
@@ -82,8 +110,15 @@ adbd_start() {
 		shell=$(command -v bash 2>/dev/null || true)
 		[ -n "${shell}" ] || shell=/bin/sh
 	fi
-	ADBD_SHELL="${shell}" ADBD_GADGET_UDC_PATH="${G}/UDC" \
-		ADBD_GADGET_UDC="${udc}" setsid "${ADBD}" >/tmp/adbd.log 2>&1 &
+	if [ -n "${ADBD_USER:-}" ]; then
+		ADBD_SHELL="${shell}" ADBD_GADGET_UDC_PATH="${G}/UDC" \
+			ADBD_GADGET_UDC="${udc}" HOME="${ADBD_HOME}" \
+			setsid setpriv --reuid="${ADBD_UID}" --regid="${ADBD_GID}" \
+			--init-groups "${ADBD}" >/tmp/adbd.log 2>&1 &
+	else
+		ADBD_SHELL="${shell}" ADBD_GADGET_UDC_PATH="${G}/UDC" \
+			ADBD_GADGET_UDC="${udc}" setsid "${ADBD}" >/tmp/adbd.log 2>&1 &
+	fi
 }
 
 adbd_stop() {

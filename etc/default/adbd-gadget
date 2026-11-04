@@ -19,9 +19,22 @@ ADBD_GADGET_BCDDEVICE=0x0100
 #ADBD_GADGET_PRODUCT=ADB Interface
 #ADBD_GADGET_SERIAL=0123456789
 
-# FunctionFS mount ownership. Defaults to the user running usbdevice.
+# FunctionFS mount ownership. Defaults to the user running usbdevice, or to
+# ADBD_USER when that is set.
 #ADBD_GADGET_FFS_UID=0
 #ADBD_GADGET_FFS_GID=0
+
+# adbd runtime. "auto" runs adbd (and adb shell) as the first regular account
+# (uid 1000+, valid login shell); set a name to pick one explicitly. Leave
+# empty to run adbd as root. Gadget setup stays root either way, and FunctionFS
+# ownership follows the selected user.
+ADBD_USER=auto
+
+# Extra network transports. USB is used automatically when a UDC exists.
+# tcp:<port> listens on all interfaces; tcp:127.0.0.1:<port> is loopback only.
+# These reach adbd, so keep the export keyword.
+#export ADBD_LISTEN=tcp:5555
+#export ADBD_PORT=5555
 
 # Optional CDC-NCM function, composed with adb in the same USB configuration.
 # Windows 10/11, Linux and macOS see a USB Ethernet adapter; the usbnetwork

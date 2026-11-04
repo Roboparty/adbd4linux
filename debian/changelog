@@ -1,3 +1,12 @@
+adbd (1.0.10-1) unstable; urgency=medium
+
+  * Run adbd and adb shell as a normal user via ADBD_USER; auto-detect the
+    first regular account by default and give it FunctionFS ownership.
+  * Document ADBD_LISTEN/ADBD_PORT in /etc/default/adbd-gadget with the
+    required export.
+
+ -- RoboParty <2321901849@qq.com>  Wed, 04 Nov 2026 10:25:02 +0800
+
 adbd (1.0.9-1) unstable; urgency=medium
 
   * Add runtime dependencies for scrcpy-display: xvfb, xfce4-session,

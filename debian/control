@@ -13,7 +13,7 @@ Vcs-Browser: https://github.com/Roboparty/adbd
 Package: adbd
 Architecture: linux-any
 Depends: ${shlibs:Depends}, python3, ffmpeg, xvfb, xfce4-session, dbus,
- dbus-x11, x11-utils, libx11-6, libxtst6, iproute2, procps, systemd
+ dbus-x11, x11-utils, libx11-6, libxtst6, iproute2, procps, systemd, util-linux
 Recommends: dnsmasq, nftables, samba
 Description: AOSP device-side Android Debug Bridge daemon for Linux
  Standalone Linux port of the AOSP master adbd, supporting FunctionFS USB,
