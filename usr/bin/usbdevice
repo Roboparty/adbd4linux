@@ -17,6 +17,8 @@ GADGET_DIR="${CONFIGFS}/usb_gadget"
 FFS_MOUNTPOINT=/dev/usb-ffs/adb   # adbd expects its FunctionFS ep0 exactly here
 DEFAULTS=/etc/default/adbd-gadget
 ADBD=/usr/bin/adbd
+BIND_WATCHER_PID=/run/usbdevice-bind.pid
+BIND_WATCHER_LOG=/tmp/usbdevice-bind.log
 
 if [ -r "${DEFAULTS}" ]; then
 	# shellcheck disable=SC1090
@@ -121,7 +123,46 @@ adbd_start() {
 	fi
 }
 
+bind_watcher_stop() {
+	[ -f "${BIND_WATCHER_PID}" ] || return 0
+	pid=$(cat "${BIND_WATCHER_PID}" 2>/dev/null || true)
+	if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
+		kill "${pid}" 2>/dev/null || true
+		remaining=20
+		while kill -0 "${pid}" 2>/dev/null; do
+			[ "${remaining}" -gt 0 ] || break
+			sleep 0.1
+			remaining=$((remaining - 1))
+		done
+	fi
+	rm -f "${BIND_WATCHER_PID}"
+}
+
+# adbd runs as the selected non-root user, but FunctionFS/configfs binding needs
+# root. Watch for adbd opening both bulk endpoints, then bind the UDC as root.
+# This also covers every reopen after a USB disconnect.
+bind_watcher_start() {
+	[ -n "${ADBD_USER:-}" ] || return 0
+	bind_watcher_stop
+	(
+		trap 'rm -f "${BIND_WATCHER_PID}"' EXIT
+		while [ -d "${G}" ]; do
+			if [ -z "$(cat "${G}/UDC" 2>/dev/null)" ]; then
+				adbd_pid=$(pidof adbd 2>/dev/null | tr ' ' '\n' | head -n 1)
+				if [ -n "${adbd_pid}" ] && [ -d "/proc/${adbd_pid}/fd" ] && \
+					ls -l "/proc/${adbd_pid}/fd" 2>/dev/null | grep -q 'usb-ffs/adb/ep1' && \
+					ls -l "/proc/${adbd_pid}/fd" 2>/dev/null | grep -q 'usb-ffs/adb/ep2'; then
+					printf '%s\n' "${udc}" > "${G}/UDC" 2>/dev/null || true
+				fi
+			fi
+			sleep 0.1
+		done
+	) >"${BIND_WATCHER_LOG}" 2>&1 &
+	echo $! > "${BIND_WATCHER_PID}"
+}
+
 adbd_stop() {
+	bind_watcher_stop
 	pkill -x adbd >/dev/null 2>&1 || true
 	# Let the daemon exit before tearing down configfs, so a reconnect cannot
 	# race the intentional unbind performed by stop/restart.
@@ -191,6 +232,7 @@ gadget_start() {
 
 	if [ -d "${G}" ] && [ -n "$(cat "${G}/UDC" 2>/dev/null)" ]; then
 		echo "usbdevice: gadget already bound"
+		bind_watcher_start
 		return 0
 	fi
 
@@ -231,6 +273,7 @@ gadget_start() {
 	rm -f "${G}/configs/c.1/ffs.adb"
 	ln -s "${G}/functions/ffs.adb" "${G}/configs/c.1/ffs.adb"
 	adbd_start
+	bind_watcher_start
 
 	# adbd binds after writing descriptors and opening the endpoints, including
 	# every reopen after a disconnect. Only one process writes the binding.

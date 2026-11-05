@@ -8,7 +8,9 @@ idempotency, conflicting controllers, missing configfs, and invalid settings.
 After opening FunctionFS endpoints, adbd binds that gadget only. An adbd started
 without these variables leaves binding to its external gadget manager.
 The start script creates function links before launching adbd and waits for its
-binding; stop waits for adbd to exit before dismantling configfs.
+binding. When `ADBD_USER` is non-root, a root watcher binds the UDC after adbd
+opens both FunctionFS bulk endpoints; this covers reconnect reopen events.
+Stop waits for adbd and the watcher to exit before dismantling configfs.
 
 Hardware acceptance requires an independent SSH connection. Record boot ID,
 adbd PID, UDC binding and host `adb devices -l`. Unplug and reconnect USB several

@@ -159,7 +159,10 @@ Edit `/etc/default/adbd-gadget` and restart `usbdevice.service`.
 therefore every `adb shell`, runs as. The default `auto` picks the first
 regular account (uid 1000+ with a valid login shell). Set a name to pick one
 explicitly, or leave it empty to keep root. `usbdevice` still sets up the
-gadget as root and gives the user ownership of FunctionFS.
+gadget as root and gives the user ownership of FunctionFS. A small root watcher
+binds the UDC only after adbd has opened both FunctionFS bulk endpoints, so the
+non-root daemon never needs configfs write access; the watcher also re-binds
+after USB reconnect.
 
 ```ini
 ADBD_USER=auto
@@ -333,7 +336,8 @@ adb logcat -d -t 100
 | scrcpy opens but has no video | `Xvfb :99`, the desktop session, and `/usr/bin/ffmpeg` on the target |
 | scrcpy input is missing | Check `DISPLAY`, `libX11`/`libXtst`, or fall back to `/dev/uinput` |
 | Chinese text input is ignored | `input text` only covers ASCII/Latin-1 |
-| Service fails to start | `journalctl -u usbdevice.service -b` and `journalctl -u adbd` |
+| Service fails to start | `journalctl -u usbdevice.service -b`, `journalctl -u adbd`, and `/tmp/usbdevice-bind.log` |
+| `timed out waiting for FunctionFS/configfs bind` | Check that adbd opened `/dev/usb-ffs/adb/ep1` and `ep2`; see `/tmp/adbd.log` and `/tmp/usbdevice-bind.log`. Verify `usbdevice.service` still runs as root so the bind watcher can write configfs. |
 | Network access is denied | Add an explicit `ADBD_LISTEN` socket spec; loopback is safer |
 
 ## Security notes
