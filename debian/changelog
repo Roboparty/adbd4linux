@@ -1,3 +1,10 @@
+adbd (1.0.11-1) unstable; urgency=medium
+
+  * Bind the FunctionFS UDC from a root watcher after non-root adbd opens
+    both bulk endpoints; also re-bind after USB reconnect.
+
+ -- wentywenty <2321901849@qq.com>  Fri, 06 Nov 2026 11:41:03 +0800
+
 adbd (1.0.10-1) unstable; urgency=medium
 
   * Run adbd and adb shell as a normal user via ADBD_USER; auto-detect the
