@@ -1,3 +1,10 @@
+adbd (1.0.12-1) unstable; urgency=medium
+
+  * Default ADBD_USER to empty so adbd and adb shell run as root, restoring
+    the expected RoboParty behaviour after the 1.0.10 non-root default.
+
+ -- RoboParty <2321901849@qq.com>  Mon, 09 Nov 2026 13:50:00 +0800
+
 adbd (1.0.11-1) unstable; urgency=medium
 
   * Bind the FunctionFS UDC from a root watcher after non-root adbd opens

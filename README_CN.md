@@ -148,9 +148,9 @@ TCP 默认建议只监听回环地址。
 ### 以普通用户运行 adbd
 
 `/etc/default/adbd-gadget` 的 `ADBD_USER` 决定 adbd 及所有 `adb shell` 以
-哪个账号运行。默认 `auto` 取第一个普通账号（uid 1000+ 且 shell 可登录）；
-也可以写具体用户名，留空则保持 root。`usbdevice` 仍以 root 配置 gadget，
-并把 FunctionFS 的属主交给该用户。
+哪个账号运行。默认留空，保持 adbd 以 root 运行；设为 `auto` 取第一个普通账号
+（uid 1000+ 且 shell 可登录）；也可以写具体用户名。非 root 模式下
+`usbdevice` 仍以 root 配置 gadget，并把 FunctionFS 的属主交给该用户。
 
 ```ini
 ADBD_USER=auto
@@ -242,7 +242,7 @@ loopback。`adbd-smb disable` 会移除共享并停止 `smbd`。
 | `ADB_TCP_PORT` | `ADBD_PORT` 的旧版兼容变量 |
 | `ADBD_SHELL` | shell 路径；优先 `bash`，没有时用 `/bin/sh` |
 | `ADBD_USB=0` | 禁用 USB 探测，供隔离测试使用 |
-| `ADBD_USER` | `auto` | `auto` 取第一个普通账号；写用户名则固定；留空为 root |
+| `ADBD_USER` | 空（root） | 留空保持 root；`auto` 取第一个普通账号；写用户名则固定 |
 
 `ADBD_USER` 放在 `/etc/default/adbd-gadget`。其余变量需要进入 adbd 的进程
 环境，所以放在 systemd drop-in 中，或手动运行 `usbdevice` 前 export。

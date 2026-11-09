@@ -156,13 +156,13 @@ Edit `/etc/default/adbd-gadget` and restart `usbdevice.service`.
 ### Run adbd as a normal user
 
 `ADBD_USER` in `/etc/default/adbd-gadget` selects the account adbd, and
-therefore every `adb shell`, runs as. The default `auto` picks the first
-regular account (uid 1000+ with a valid login shell). Set a name to pick one
-explicitly, or leave it empty to keep root. `usbdevice` still sets up the
-gadget as root and gives the user ownership of FunctionFS. A small root watcher
-binds the UDC only after adbd has opened both FunctionFS bulk endpoints, so the
-non-root daemon never needs configfs write access; the watcher also re-binds
-after USB reconnect.
+therefore every `adb shell`, runs as. It is empty by default, which keeps adbd
+running as root. Set `auto` to pick the first regular account (uid 1000+ with a
+valid login shell), or set a name to pick one explicitly. In the non-root mode
+`usbdevice` still sets up the gadget as root and gives the user ownership of
+FunctionFS. A small root watcher binds the UDC only after adbd has opened both
+FunctionFS bulk endpoints, so the non-root daemon never needs configfs write
+access; the watcher also re-binds after USB reconnect.
 
 ```ini
 ADBD_USER=auto
@@ -252,7 +252,7 @@ Settings live in `/etc/default/adbd-smb`; the share is restricted to
 | `ADB_TCP_PORT` | Legacy fallback for `ADBD_PORT` |
 | `ADBD_SHELL` | Shell executable; defaults to `bash` when available, otherwise `/bin/sh` |
 | `ADBD_USB=0` | Disable USB discovery for isolated tests |
-| `ADBD_USER` | `auto` | `auto` picks the first regular account; a name pins one; empty keeps root |
+| `ADBD_USER` | empty (root) | empty keeps root; `auto` picks the first regular account; a name pins one |
 
 `ADBD_USER` goes in `/etc/default/adbd-gadget`. The other variables reach adbd
 through the process environment, so put them in a `systemd` drop-in or export
